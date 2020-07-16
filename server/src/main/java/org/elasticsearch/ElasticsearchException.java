@@ -88,7 +88,7 @@ public class ElasticsearchException extends RuntimeException implements ToXConte
     private static final String REASON = "reason";
     private static final String CAUSED_BY = "caused_by";
     private static final ParseField SUPPRESSED = new ParseField("suppressed");
-    private static final String STACK_TRACE = "stack_trace";
+    public static final String STACK_TRACE = "stack_trace";
     private static final String HEADER = "header";
     private static final String ERROR = "error";
     private static final String ROOT_CAUSE = "root_cause";
@@ -1046,7 +1046,12 @@ public class ElasticsearchException extends RuntimeException implements ToXConte
                 org.elasticsearch.indices.recovery.PeerRecoveryNotFound.class,
                 org.elasticsearch.indices.recovery.PeerRecoveryNotFound::new,
                 158,
-                Version.V_7_9_0);
+                Version.V_7_9_0),
+        NODE_HEALTH_CHECK_FAILURE_EXCEPTION(
+                org.elasticsearch.cluster.coordination.NodeHealthCheckFailureException.class,
+                org.elasticsearch.cluster.coordination.NodeHealthCheckFailureException::new,
+                159,
+                Version.V_8_0_0);
 
         final Class<? extends ElasticsearchException> exceptionClass;
         final CheckedFunction<StreamInput, ? extends ElasticsearchException, IOException> constructor;

@@ -20,6 +20,7 @@ import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.common.xcontent.json.JsonXContent;
 import org.elasticsearch.xpack.core.ilm.AllocateAction;
 import org.elasticsearch.xpack.core.ilm.DeleteAction;
 import org.elasticsearch.xpack.core.ilm.ForceMergeAction;
@@ -33,12 +34,14 @@ import org.elasticsearch.xpack.core.ilm.Step;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
 import static java.util.Collections.singletonMap;
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.elasticsearch.test.ESTestCase.randomAlphaOfLengthBetween;
 
 /**
  * This class provides the operational REST functions needed to control an ILM time series lifecycle.
@@ -92,7 +95,7 @@ public final class TimeSeriesRestDriver {
 
     public static void indexDocument(RestClient client, String indexAbstractionName, boolean refresh) throws IOException {
         Request indexRequest = new Request("POST", indexAbstractionName + "/_doc" + (refresh ? "?refresh" : ""));
-        indexRequest.setEntity(new StringEntity("{\"a\": \"test\"}", ContentType.APPLICATION_JSON));
+        indexRequest.setEntity(new StringEntity("{\"@timestamp\": \"2020-12-12\"}", ContentType.APPLICATION_JSON));
         Response response = client.performRequest(indexRequest);
         logger.info(response.getStatusLine());
     }
@@ -122,7 +125,7 @@ public final class TimeSeriesRestDriver {
         StringEntity templateJSON = new StringEntity(
             String.format(Locale.ROOT, "{\n" +
                 "  \"index_patterns\": \"%s\",\n" +
-                "  \"data_stream\": { \"timestamp_field\": \"@timestamp\" },\n" +
+                "  \"data_stream\": {},\n" +
                 "  \"template\": %s\n" +
                 "}", indexPattern, Strings.toString(builder)),
             ContentType.APPLICATION_JSON);
@@ -169,4 +172,36 @@ public final class TimeSeriesRestDriver {
         request.setEntity(entity);
         client.performRequest(request);
     }
+
+    public static void createSnapshotRepo(RestClient client, String repoName, boolean compress) throws IOException {
+        Request request = new Request("PUT", "/_snapshot/" + repoName);
+        request.setJsonEntity(Strings
+            .toString(JsonXContent.contentBuilder()
+                .startObject()
+                .field("type", "fs")
+                .startObject("settings")
+                .field("compress", compress)
+                //random location to avoid clash with other snapshots
+                .field("location", System.getProperty("tests.path.repo") + "/" + randomAlphaOfLengthBetween(4, 10))
+                .field("max_snapshot_bytes_per_sec", "100m")
+                .endObject()
+                .endObject()));
+        client.performRequest(request);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> getOnlyIndexSettings(RestClient client, String index) throws IOException {
+        Request request = new Request("GET", "/" + index + "/_settings");
+        request.addParameter("flat_settings", "true");
+        Response response = client.performRequest(request);
+        try (InputStream is = response.getEntity().getContent()) {
+            Map<String, Object> responseMap = XContentHelper.convertToMap(XContentType.JSON.xContent(), is, true);
+            Map<String, Object> indexSettings = (Map<String, Object>) responseMap.get(index);
+            if (indexSettings == null) {
+                return Collections.emptyMap();
+            }
+            return (Map<String, Object>) indexSettings.get("settings");
+        }
+    }
+
 }
