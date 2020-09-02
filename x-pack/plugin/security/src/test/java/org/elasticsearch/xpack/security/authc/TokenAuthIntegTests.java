@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.elasticsearch.test.SecuritySettingsSource.SECURITY_REQUEST_OPTIONS;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 
@@ -146,7 +147,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
             new InvalidateTokenRequest(accessToken, null, null, null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(1));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
         AtomicReference<String> docId = new AtomicReference<>();
         assertBusy(() -> {
             SearchResponse searchResponse = restClient.search(new SearchRequest(RestrictedIndicesNames.SECURITY_TOKENS_ALIAS)
@@ -174,7 +175,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                         SECURITY_REQUEST_OPTIONS);
                 assertThat(invalidateResponseTwo.getInvalidatedTokens(), equalTo(0));
                 assertThat(invalidateResponseTwo.getPreviouslyInvalidatedTokens(), equalTo(0));
-                assertThat(invalidateResponseTwo.getErrors().size(), equalTo(0));
+                assertThat(invalidateResponseTwo.getErrors(), empty());
             }
             restClient.indices().refresh(new RefreshRequest(RestrictedIndicesNames.SECURITY_TOKENS_ALIAS), SECURITY_REQUEST_OPTIONS);
             SearchResponse searchResponse = restClient.search(new SearchRequest(RestrictedIndicesNames.SECURITY_TOKENS_ALIAS)
@@ -188,12 +189,12 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
             new InvalidateTokenRequest(accessToken, null, null, null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateAccessTokenResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateAccessTokenResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateAccessTokenResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateAccessTokenResponse.getErrors(), empty());
         InvalidateTokenResponse invalidateRefreshTokenResponse = restClient.security().invalidateToken(
             new InvalidateTokenRequest(refreshToken, null, null, null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateRefreshTokenResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateRefreshTokenResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateRefreshTokenResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateRefreshTokenResponse.getErrors(), empty());
     }
 
     public void testInvalidateAllTokensForUser() throws Exception {
@@ -210,7 +211,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                 SecuritySettingsSourceField.TEST_PASSWORD_SECURE_STRING)).build());
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(2 * (numOfRequests)));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
     }
 
     public void testInvalidateAllTokensForRealm() throws Exception {
@@ -227,7 +228,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                     SecuritySettingsSourceField.TEST_PASSWORD_SECURE_STRING)).build());
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(2 * (numOfRequests)));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
     }
 
     public void testInvalidateAllTokensForRealmThatHasNone() throws IOException {
@@ -244,7 +245,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                     SecuritySettingsSourceField.TEST_PASSWORD_SECURE_STRING)).build());
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
     }
 
     public void testInvalidateMultipleTimes() throws IOException {
@@ -256,12 +257,12 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
             .invalidateToken(new InvalidateTokenRequest(response.getAccessToken(), null, null, null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(1));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
         InvalidateTokenResponse invalidateAgainResponse = restClient.security()
             .invalidateToken(new InvalidateTokenRequest(response.getAccessToken(), null, null, null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateAgainResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateAgainResponse.getPreviouslyInvalidatedTokens(), equalTo(1));
-        assertThat(invalidateAgainResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateAgainResponse.getErrors(), empty());
     }
 
     public void testInvalidateNotValidAccessTokens() throws Exception {
@@ -279,21 +280,21 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                 SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         invalidateResponse = restClient.security()
             .invalidateToken(new InvalidateTokenRequest("10we+might+assume+this+is+valid+old+token", null, null,
                 null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         invalidateResponse = restClient.security()
             .invalidateToken(new InvalidateTokenRequest(generateInvalidShortAccessToken(Version.CURRENT), null, null,
                 null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         // Generate a token that could be a valid token string for the version we are on, and should decode fine, but is not found in our
         // tokens index
@@ -302,7 +303,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                 SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
     }
 
     public void testInvalidateNotValidRefreshTokens() throws Exception {
@@ -321,14 +322,14 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                 SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         invalidateResponse = restClient.security()
             .invalidateToken(new InvalidateTokenRequest(null, "10we+might+assume+this+is+valid+old+token", null,
                 null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         invalidateResponse = restClient.security()
             .invalidateToken(new InvalidateTokenRequest(null,
@@ -336,7 +337,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                 SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         // Generate a token that could be a valid token string for the version we are on, and should decode fine, but is not found in our
         // tokens index
@@ -346,7 +347,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                 SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(0));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
     }
 
     public void testRefreshingToken() throws IOException {
@@ -375,7 +376,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
             .invalidateToken(new InvalidateTokenRequest(null, createTokenResponse.getRefreshToken(), null, null), SECURITY_REQUEST_OPTIONS);
         assertThat(invalidateResponse.getInvalidatedTokens(), equalTo(1));
         assertThat(invalidateResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateResponse.getErrors(), empty());
 
         ElasticsearchStatusException e = expectThrows(ElasticsearchStatusException.class,
                 () -> restClient.security().createToken(
@@ -427,7 +428,6 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
         assertThat(e.getCause().getMessage(), containsString("token has already been refreshed more than 30 seconds in the past"));
     }
 
-    @AwaitsFix(bugUrl = "https://github.com/elastic/elasticsearch/issues/55816")
     public void testRefreshingMultipleTimesWithinWindowSucceeds() throws Exception {
         final Clock clock = Clock.systemUTC();
         final List<String> tokens = Collections.synchronizedList(new ArrayList<>());
@@ -454,16 +454,16 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
                     return;
                 }
 
-                try {
+                try (RestHighLevelClient threadRestClient = new TestRestHighLevelClient()){
                     // safe to use same rest client across threads since it round robins between nodes
-                    CreateTokenResponse result = restClient.security()
+                    CreateTokenResponse result = threadRestClient.security()
                         .createToken(CreateTokenRequest.refreshTokenGrant(createTokenResponse.getRefreshToken()), SECURITY_REQUEST_OPTIONS);
                     final Instant t2 = clock.instant();
                     if (t1.plusSeconds(30L).isBefore(t2)) {
                         logger.warn("Tokens [{}], [{}] were received more than 30 seconds after the request, not checking them",
                             result.getAccessToken(), result.getRefreshToken());
                     } else {
-                        authStatuses.add(getAuthenticationResponseCode(result.getAccessToken()));
+                        authStatuses.add(getAuthenticationResponseCode(threadRestClient, result.getAccessToken()));
                         tokens.add(result.getAccessToken() + result.getRefreshToken());
                     }
                     logger.info("received access token [{}] and refresh token [{}]", result.getAccessToken(), result.getRefreshToken());
@@ -524,8 +524,9 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
         assertNotEquals(refreshResponse.getRefreshToken(), createTokenResponse.getRefreshToken());
 
         AuthenticateResponse response = restClient.security().authenticate(superuserOptions);
-        ;
+
         assertEquals(SecuritySettingsSource.TEST_SUPERUSER, response.getUser().getUsername());
+        assertEquals("realm", response.getAuthenticationType());
 
         assertAuthenticateWithToken(createTokenResponse.getAccessToken(), SecuritySettingsSource.TEST_USER_NAME);
         assertAuthenticateWithToken(refreshResponse.getAccessToken(), SecuritySettingsSource.TEST_USER_NAME);
@@ -547,7 +548,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
             .invalidateToken(InvalidateTokenRequest.accessToken(createTokenResponse.getAccessToken()), superuserOptions);
         assertThat(invalidateTokenResponse.getInvalidatedTokens(), equalTo(1));
         assertThat(invalidateTokenResponse.getPreviouslyInvalidatedTokens(), equalTo(0));
-        assertThat(invalidateTokenResponse.getErrors().size(), equalTo(0));
+        assertThat(invalidateTokenResponse.getErrors(), empty());
 
        assertUnauthorizedToken(createTokenResponse.getAccessToken());
     }
@@ -603,6 +604,7 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
         AuthenticateResponse authResponse = restClient.security().authenticate(RequestOptions.DEFAULT.toBuilder().addHeader("Authorization",
             "Bearer " + accessToken).build());
         assertThat(authResponse.getUser().getUsername(), equalTo(expectedUser));
+        assertThat(authResponse.getAuthenticationType(), equalTo("token"));
     }
 
     private void assertUnauthorizedToken(String accessToken) {
@@ -613,10 +615,10 @@ public class TokenAuthIntegTests extends SecurityIntegTestCase {
         assertThat(e.status(), equalTo(RestStatus.UNAUTHORIZED));
     }
 
-    private RestStatus getAuthenticationResponseCode(String accessToken) throws IOException {
-        final RestHighLevelClient restClient = new TestRestHighLevelClient();
+    private RestStatus getAuthenticationResponseCode(RestHighLevelClient client, String accessToken) throws IOException {
+
         try {
-            restClient.security().authenticate(RequestOptions.DEFAULT.toBuilder().addHeader("Authorization",
+            client.security().authenticate(RequestOptions.DEFAULT.toBuilder().addHeader("Authorization",
                 "Bearer " + accessToken).build());
             return RestStatus.OK;
         } catch (ElasticsearchStatusException esse) {

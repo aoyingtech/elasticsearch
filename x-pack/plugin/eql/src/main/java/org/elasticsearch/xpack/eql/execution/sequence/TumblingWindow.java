@@ -9,6 +9,7 @@ package org.elasticsearch.xpack.eql.execution.sequence;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.search.SearchHit;
@@ -20,13 +21,14 @@ import org.elasticsearch.xpack.eql.execution.search.Ordinal;
 import org.elasticsearch.xpack.eql.execution.search.QueryClient;
 import org.elasticsearch.xpack.eql.session.EmptyPayload;
 import org.elasticsearch.xpack.eql.session.Payload;
-import org.elasticsearch.xpack.eql.session.Results.Type;
+import org.elasticsearch.xpack.eql.session.Payload.Type;
 import org.elasticsearch.xpack.eql.util.ReversedIterator;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static org.elasticsearch.action.ActionListener.wrap;
+import static org.elasticsearch.xpack.eql.execution.search.RuntimeUtils.searchHits;
 
 /**
  * Time-based window encapsulating query creation and advancement.
@@ -87,6 +89,7 @@ public class TumblingWindow implements Executable {
         Criterion<BoxedQueryRequest> base = criteria.get(baseStage);
         // remove any potential upper limit (if a criteria has been promoted)
         base.queryRequest().to(null);
+        matcher.resetInsertPosition();
 
         log.trace("{}", matcher);
         log.trace("Querying base stage [{}] {}", base.stage(), base.queryRequest());
@@ -94,9 +97,9 @@ public class TumblingWindow implements Executable {
         client.query(base.queryRequest(), wrap(p -> baseCriterion(baseStage, p, listener), listener::onFailure));
     }
 
-    private void baseCriterion(int baseStage, Payload p, ActionListener<Payload> listener) {
+    private void baseCriterion(int baseStage, SearchResponse r, ActionListener<Payload> listener) {
         Criterion<BoxedQueryRequest> base = criteria.get(baseStage);
-        List<SearchHit> hits = p.values();
+        List<SearchHit> hits = searchHits(r);
 
         log.trace("Found [{}] hits", hits.size());
 
@@ -166,8 +169,8 @@ public class TumblingWindow implements Executable {
 
         log.trace("Querying until stage {}", request);
 
-        client.query(request, wrap(p -> {
-            List<SearchHit> hits = p.values();
+        client.query(request, wrap(r -> {
+            List<SearchHit> hits = searchHits(r);
 
             log.trace("Found [{}] hits", hits.size());
             // no more results for until - let the other queries run
@@ -207,8 +210,8 @@ public class TumblingWindow implements Executable {
 
         log.trace("Querying (secondary) stage [{}] {}", criterion.stage(), request);
 
-        client.query(request, wrap(p -> {
-            List<SearchHit> hits = p.values();
+        client.query(request, wrap(r -> {
+            List<SearchHit> hits = searchHits(r);
 
             log.trace("Found [{}] hits", hits.size());
 
@@ -267,10 +270,11 @@ public class TumblingWindow implements Executable {
         final BoxedQueryRequest request = criterion.queryRequest();
         Criterion<BoxedQueryRequest> base = criteria.get(window.baseStage);
 
+        boolean reverse = criterion.reverse() != base.reverse();
         // first box the query
         // only the first base can be descending
         // all subsequence queries are ascending
-        if (criterion.reverse() != base.reverse()) {
+        if (reverse) {
             if (window.end.equals(request.from()) == false) {
                 // if that's the case, set the starting point
                 request.from(window.end);
@@ -282,7 +286,7 @@ public class TumblingWindow implements Executable {
             request.to(window.end);
         }
 
-        return criterion.reverse() != base.reverse();
+        return reverse;
     }
 
     private void payload(ActionListener<Payload> listener) {
@@ -296,8 +300,8 @@ public class TumblingWindow implements Executable {
             return;
         }
 
-        client.get(hits(completed), wrap(searchHits -> {
-            listener.onResponse(new SequencePayload(completed, searchHits, false, timeTook()));
+        client.get(hits(completed), wrap(hits -> {
+            listener.onResponse(new SequencePayload(completed, hits, false, timeTook()));
             matcher.clear();
         }, listener::onFailure));
     }
@@ -305,6 +309,7 @@ public class TumblingWindow implements Executable {
     private TimeValue timeTook() {
         return new TimeValue(System.currentTimeMillis() - startTime);
     }
+
     Iterable<List<HitReference>> hits(List<Sequence> sequences) {
         return () -> {
             final Iterator<Sequence> delegate = criteria.get(0).reverse() != criteria.get(1).reverse() ?
